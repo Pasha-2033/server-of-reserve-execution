@@ -1,0 +1,11 @@
+Parser.java
+String buffer = "";
+    for (int ii = i; ii < commands.size(); ii++){
+        if (commands.get(ii).lvl >= minbufferlvl){
+            buffer += commands.get(ii).code;
+            if (ii + 1 == commands.size() && !buffer.equals(")")) commandlines.add(buffer);
+        } else {
+            if (!buffer.equals(")")) commandlines.add(buffer);
+            break;
+        }
+    }
