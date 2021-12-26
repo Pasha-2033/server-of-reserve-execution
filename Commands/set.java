@@ -1,3 +1,4 @@
+/*
 package Commands;
 import java.util.Map;
 import MainFolder.Var;
@@ -6,3 +7,4 @@ public class set {
 
     }
 }
+*/

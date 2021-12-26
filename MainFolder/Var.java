@@ -41,6 +41,10 @@ public class Var<value> {
             this.instance = null;
         }
     }
+    public static Var<?> getemptyvar(){
+        //fix
+        return new Var<>("empty" + Main.vars.size(), null);
+    }
     public static final Var<?> getbyname(List<Var<?>> varlist, String name){
         for (Var<?> var : varlist) if (var.name.equals(name)) return var;
         return null;

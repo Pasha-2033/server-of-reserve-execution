@@ -1,24 +1,15 @@
 //доделана проверена
 package Commands;
 import java.util.List;
-import java.util.Map;
 import MainFolder.Var;
 public class exit {
-    public exit(Map<String, String> params){
+    public exit(){}
+    public Var<?> execute(List<Var<?>> params){
         if (params == null){
             System.exit(0);
-            return;
         }
-        if (params.containsKey("code")){
-            System.exit(Integer.parseInt(params.get("code")));
-        } else {
-            System.exit(0);
-        }
-    }
-    public exit(List<Var<?>> params){
-        if (params == null){
-            System.exit(0);
-            return;
+        for (Var<?> v : params){
+            System.out.println(v.getname() + " " + v.getvalue());
         }
         Var<?> v = Var.getbyname(params, "code");
         if (v != null){
@@ -26,5 +17,6 @@ public class exit {
         } else {
             System.exit(0);
         }
+        return null;
     }
 }

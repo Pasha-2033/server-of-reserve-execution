@@ -64,10 +64,10 @@ public class Parser {
                     if (commands.get(ii).lvl >= minbufferlvl){
                         buffer += commands.get(ii).code;
                         if (ii + 1 == commands.size()) {
-                            if (!buffer.equals(")")) commandlines.add(buffer);
+                            if (!buffer.equals(")") && buffer != "") commandlines.add(buffer);
                         }
                     } else {
-                        if (!buffer.equals(")")) commandlines.add(buffer);
+                        if (!buffer.equals(")") && buffer != "") commandlines.add(buffer);
                         break;
                     }
                 }
@@ -113,8 +113,27 @@ public class Parser {
         }
         return result;
     }
-    private static final String[] parsecommand(String command){
-        if (command.startsWith("\\$(")) command = command.substring(2, command.length() - 2);
+    private static String findinnercommand(String command, String argname, List<String> allcommands){
+        String tmp = command.substring(command.indexOf(argname) + argname.length() + 1);
+        if (tmp.length() == 0) return null;
+        List<String> sizecommands = new ArrayList<String>(Collections.emptyList());
+        if (allcommands.isEmpty()) return null;
+        sizecommands.add(allcommands.get(0));
+        for (int i = 1; i < allcommands.size(); i++){
+            for (int ii = 0; ii < sizecommands.size(); ii++){
+                if (sizecommands.get(ii).length() > allcommands.get(i).length()){
+                    sizecommands.add(ii, allcommands.get(i));
+                    break;
+                }
+            }
+        }
+        for (String s : sizecommands){
+            if (tmp.startsWith(s)) return s.substring(2, s.length() - 1);
+        }
+        return null;
+    }
+    private static String[] parsecommand(String command){
+        if (command.startsWith("$(")) command = command.substring(2, command.length() - 2);
         return command.split(" ", 2);
     }
     private static List<Var<?>> parsearg(String args, List<String> allcommands) {
@@ -123,23 +142,43 @@ public class Parser {
         int i  = 0;  
         for (String arg : parts) {
             String[] keyval = arg.split("=");
-            if (keyval.length == 2){
+            if (keyval.length > 1){
                 String key = keyval[0];
                 String value = keyval[1];
-                if (value.startsWith("\\$(")){
-                    //some fixes required
+                if (value.startsWith("$(")){
+                    value = findinnercommand(args, key, allcommands);
+                    if (value == null){
+                        System.out.println("Parser error: argument (" + key + ") doesn`t have existing command");
+                        return new ArrayList<Var<?>>(Collections.emptyList());
+                    }
+                    if (value == ""){
+                        System.out.println("Parser error: argument (" + key + ") doesn`t have empty command");
+                        return new ArrayList<Var<?>>(Collections.emptyList());
+                    }
                     parameters.add(new Var<>(key, execute(value, allcommands).getvalue()));
-                } else if (value.startsWith("\\$")){
-                    try {
+                } else if (value.startsWith("$")){
+                    Var<?> v = Var.getbyname(Main.vars, value.substring(1));
+                    if (v != null){
                         parameters.add(Var.getbyname(Main.vars, value.substring(1)));
-                    } catch (Exception e){
-                        //error
+                    } else {
+                        System.out.println("Parser error: var (" + value.substring(1) + ") is not found");
+                        return new ArrayList<Var<?>>(Collections.emptyList());
                     }
                 } else {
-                    parameters.add(new Var<>(key, value));
+                    Var<?> v = Var.getbyname(parameters, key);
+                    if (v != null){
+                        parameters.set(parameters.indexOf(v), new Var<>(key, value));
+                    } else {
+                        parameters.add(new Var<>(key, value));
+                    }
                 }
             } else {
-                parameters.add(new Var<>("arg" + String.valueOf(i), keyval[0]));
+                Var<?> v = Var.getbyname(parameters, "arg" + i);
+                if (v != null){
+                    parameters.set(parameters.indexOf(v), new Var<>("arg" + i, keyval[0]));
+                } else {
+                    parameters.add(new Var<>("arg" + i, keyval[0]));
+                }
                 i++;
             }
         }
@@ -154,6 +193,7 @@ public class Parser {
         return line.length() - line.replace("$(", "$").length();
     }
     private static boolean iscorrectcomand(String commandline){
+        if (!commandline.replace("\\$(", "").contains("$(")) return true;
         return countclosingbrackets(commandline) == countopeningbrackets(commandline);
     }
     private static boolean isfirst(List<CommandHelper> list, int index){
@@ -167,10 +207,18 @@ public class Parser {
         }
         return false;
     }
-    static private Var<?> execute(String command, List<String> allcommands){
+    public static final Var<?> execute(String command, List<String> allcommands){
+        if (command == null){
+            System.out.println("Warning: name of the command took null value");
+            return Var.getemptyvar();
+        }
+        if (command == ""){
+            System.out.println("Warning: name of the command took empty value");
+            return Var.getemptyvar();
+        }
         String[] commandargs = parsecommand(command);
-        if (commandargs.length == 1) return new Var<>(commandargs[0], Execute.ExecuteCommand(command, new ArrayList<Var<?>>(Collections.emptyList())));
-        return new Var<>(commandargs[0], Execute.ExecuteCommand(commandargs[0], parsearg(commandargs[1], allcommands)));
+        if (commandargs.length == 1) return new Var<>(commandargs[0], Execute.ExecuteCommand2(commandargs[0], new ArrayList<Var<?>>(Collections.emptyList())));
+        return new Var<>(commandargs[0], Execute.ExecuteCommand2(commandargs[0], parsearg(commandargs[1], allcommands)).getvalue());
     }
     public static class CommandHelper {
         public CommandHelper(String code, int lvl){
